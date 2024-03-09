@@ -74,11 +74,10 @@ class SarsaAgent(BaseAgent):
         )
 
     def agent_start(self, state):
-        # print("Initial state: ", state)
         action = self.choose_action(state)
-        # print("Action taken:", action)
         self.last_state = state
         self.last_action = action
+
         return action
 
     def agent_step(self, reward, state):
