@@ -11,7 +11,13 @@ import text_flappy_bird_gym
 from agents.sarsa import SarsaAgent
 
 
-def run(alpha, epsilon, gamma, lambda_, mode, num_episodes, max_steps, env):
+def run(alpha, epsilon, gamma, lambda_, mode, num_episodes, max_steps, env, overwrite=False):
+
+    run_name = f"SARSA_α_{alpha}_ε_{epsilon}_ɣ_{gamma}_λ_{lambda_}_{mode}"
+
+    if not overwrite and os.path.exists(f"results/{run_name}.npy"):
+        print(f"Skipping {run_name} as it already exists")
+        return [0], run_name
 
     # initiate agent
     agent = SarsaAgent()
@@ -24,8 +30,11 @@ def run(alpha, epsilon, gamma, lambda_, mode, num_episodes, max_steps, env):
         "mode": mode,
     }
     agent.agent_init(agent_info)
+    obs, info = env.reset()
 
     rewards = []
+    top_scores = 0
+    last_top_score = 0
 
     pbar = trange(num_episodes)
 
@@ -46,39 +55,80 @@ def run(alpha, epsilon, gamma, lambda_, mode, num_episodes, max_steps, env):
                 agent.agent_end(reward)
                 break
 
+        if top_scores > 10:
+            break
+
         if episode % 10 == 0:
+            if step > max_steps*0.95:
+                if last_top_score == episode-10:
+                    top_scores += 1
+                    last_top_score = episode
+                else:
+                    top_scores = 0
+                    last_top_score = episode
             rewards.append(step)
 
         pbar.set_description(f"Episode {episode + 1} - Reward: {rewards[-1]}")
 
     # Save the policy and the rewards
-    run_name = f"SARSA_α_{alpha}_ε_{epsilon}_ɣ_{gamma}_λ_{lambda_}_{mode}"
     agent.save_policy(f"results/{run_name}.npy")
     return rewards, run_name
+
+def eval(alpha, epsilon, gamma, lambda_, mode, num_episodes, max_steps, env):
+
+    run_name = f"SARSA_α_{alpha}_ε_{epsilon}_ɣ_{gamma}_λ_{lambda_}_{mode}"
+
+    # initiate agent
+    agent = SarsaAgent()
+    agent_info = {
+        "num_actions": env.action_space.n,
+        "alpha": alpha,
+        "epsilon": 0,
+        "gamma": gamma,
+        "lambda": lambda_,
+        "mode": mode,
+    }
+    agent.agent_init(agent_info)
+    agent.load_policy(f"results/{run_name}.npy")
+    obs, info = env.reset()
+
+    iteration = 0
+    while iteration < max_steps:
+
+        # Select next action
+        action = agent.choose_action(obs)
+
+        # Appy action and return new observation of the environment
+        obs, reward, done, _, info = env.step(action)
+
+        # If player is dead break
+        if done:
+            break
+
+        iteration += 1
+
+    score = info["score"]
+
+    return iteration, score
 
 
 if __name__ == "__main__":
 
     # initiate environment
     env = gym.make("TextFlappyBird-v0", height=15, width=20, pipe_gap=4)
-    obs = env.reset()
+    obs, info = env.reset()
 
     # Create grid search
-    # alphas = [0.1, 0.2, 0.3]
-    # epsilons = [0.005, 0.05, 0.2]
-    # gammas = [0.9, 0.95, 0.99]
-    # lambdas = [0.5, 0.9, 1]
-    # modes = ["replace", "accumulate"]
-
-    alphas = [0.1]
-    epsilons = [0.05]
-    gammas = [0.9]
-    lambdas = [0.9]
-    modes = ["replace"]
+    alphas = [0.1, 0.5, 0.2]
+    epsilons = [0.3, 0.1, 0.05,  0.2]
+    gammas = [0.9, 0.99]
+    lambdas = [0.5, 0.9, 1]
+    modes = ["replace"]#, "accumulate"]
 
     num_sweeps = len(alphas) * len(epsilons) * len(gammas) * len(lambdas) * len(modes)
-    num_episodes = 100
-    max_steps = 100000
+    num_episodes = 5000
+    max_steps = 200
+    eval_max_steps = 1000
 
     rewards = {}
 
@@ -87,8 +137,11 @@ if __name__ == "__main__":
     grid_search = itertools.product(alphas, epsilons, gammas, lambdas, modes)
     for sweep, (alpha, epsilon, gamma, lambda_, mode) in enumerate(grid_search):
         print(f"Running [{sweep+1}/{num_sweeps}] SARSA with alpha={alpha}, epsilon={epsilon}, gamma={gamma}, lambda={lambda_}, mode={mode}")
-        reward_list, run_name = run(alpha, epsilon, gamma, lambda_, mode, num_episodes, max_steps, env)
+        reward_list, run_name = run(alpha, epsilon, gamma, lambda_, mode, num_episodes, max_steps, env, overwrite=False)
         rewards[run_name] = reward_list
+
+        iteration, score = eval(alpha, epsilon, gamma, lambda_, mode, num_episodes, eval_max_steps, env)
+        print(f"Evaluation finished after {iteration} iterations with a score of {score} {'(invicible)' if iteration == eval_max_steps else ''}")
 
     env.close()
 
