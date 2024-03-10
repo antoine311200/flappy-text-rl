@@ -5,6 +5,7 @@ import gymnasium as gym
 import text_flappy_bird_gym
 
 from agents.sarsa import SarsaAgent
+from agents.mc import MCControlAgent
 
 if __name__ == "__main__":
 
@@ -12,16 +13,17 @@ if __name__ == "__main__":
     env = gym.make("TextFlappyBird-v0", height=15, width=20, pipe_gap=4)
     obs, info = env.reset()
 
-    agent = SarsaAgent()
-    agent_info = {
-        "num_actions": env.action_space.n,
-        "epsilon": 0.0,
-    }
-    agent.agent_init(agent_info)
+    agent_type = "mc"
+    agent_info = {"epsilon": 0}
+    if agent_type == "sarsa":
+        agent = SarsaAgent(agent_info)
+    elif agent_type == "mc":
+        agent = MCControlAgent(agent_info)
 
-    run_name = "SARSA_α_0.1_ε_0.2_ɣ_0.99_λ_1_replace" # Infinite run!
+    # run_name = "SARSA_α_0.1_ε_0.2_ɣ_0.99_λ_1_replace"  # Infinite run!
     # run_name = "SARSA_α_0.2_ε_0.2_ɣ_0.9_λ_1_replace"
-    run_name = "SARSA_α_0.1_ε_0.1_ɣ_0.99_λ_0.5_replace"
+    # run_name = "SARSA_α_0.1_ε_0.1_ɣ_0.99_λ_0.5_replace"
+    run_name = "MC_α_0.1_ε_0.02_ɣ_0.9"
     agent.load_policy(f"results/{run_name}.npy")
 
     # iterate

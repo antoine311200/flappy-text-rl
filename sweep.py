@@ -35,29 +35,31 @@ def run(alpha, epsilon, gamma, lambda_, mode, num_episodes, max_steps, env, over
     rewards = []
     top_scores = 0
     last_top_score = 0
+    last_epsilon = epsilon
 
     pbar = trange(num_episodes)
 
     for episode in pbar:
         # Change the seed for each episode
         # Each 10 steps, set the epsilon to 0 to evaluate the policy
-        agent.epsilon = epsilon if episode % 10 != 0 else 0
+        last_epsilon = agent.epsilon if agent.epsilon != 0 else last_epsilon
+        agent.epsilon = last_epsilon if episode % 10 != 0 else 0
         agent.set_seed(episode)
 
-        obs, info = env.reset()
+        obs, _ = env.reset()
         action = agent.agent_start(obs)
 
         for step in range(max_steps):
-            obs, reward, done, _, info = env.step(action)
+            obs, reward, done, _, _ = env.step(action)
             action = agent.agent_step(reward, obs)
 
             if done:
                 agent.agent_end(reward)
                 break
 
+        # Early stopping
         if top_scores > 10:
             break
-
         if episode % 10 == 0:
             if step > max_steps*0.95:
                 if last_top_score == episode-10:
