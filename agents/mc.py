@@ -15,11 +15,11 @@ class MCControlAgent(GreedyAgent):
 
         self.max_steps = agent_info.get("max_steps", 500)
 
-    def agent_step(self, env):
+    def agent_step(self, env, transform=None):
         if self.epsilon != 0.0:
             self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
 
-        episode = self.generate_episode(env)
+        episode = self.generate_episode(env, transform=transform)
         states, actions, rewards = zip(*episode)
 
         discounts = np.array([self.gamma**i for i in range(len(rewards)+1)])
@@ -33,13 +33,15 @@ class MCControlAgent(GreedyAgent):
         self.agent_step(env)
         return
 
-    def generate_episode(self, env):
+    def generate_episode(self, env, transform=None):
         episode = []
         state, _ = env.reset()
+        state = state if transform is None else transform(state, env=env)
         iteration = 0
         while iteration < self.max_steps:
             action = self.choose_action(state)
             next_state, reward, done, _, _ = env.step(action)
+            next_state = next_state if transform is None else transform(next_state, env=env)
             episode.append((state, action, reward))
             state = next_state
             if done:

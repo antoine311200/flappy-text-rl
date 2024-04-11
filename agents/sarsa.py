@@ -18,14 +18,16 @@ class SarsaAgent(GreedyAgent):
 
         self.E = defaultdict(lambda: np.zeros(self.num_actions))
 
-    def agent_start(self, state):
+    def agent_start(self, state, transform=None):
+        state = state if transform is None else transform(state)
         action = self.choose_action(state)
         self.last_state = state
         self.last_action = action
 
         return action
 
-    def agent_step(self, reward, state):
+    def agent_step(self, reward, state, transform=None):
+        state = state if transform is None else transform(state)
         action = self.choose_action(state)
 
         delta = (
